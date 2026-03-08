@@ -446,21 +446,19 @@ body {
       </div>
     </div>
 
-    <!-- 3. Greeting Radar -->
+    <!-- 3. Greeting Radar / Stay Present (dynamic by day) -->
     <div class="section" id="sec-3">
       <div class="section-header closed" onclick="toggleSection(3)">
-        <span class="section-icon">👁️</span>
-        <span class="section-title">GREETING RADAR</span>
+        <span class="section-icon" id="sec3-icon">👁️</span>
+        <span class="section-title" id="sec3-title">GREETING RADAR</span>
         <span class="section-sp" id="sp-badge-3">1 SP</span>
         <span class="section-chevron" id="chev-3">▼</span>
       </div>
       <div class="section-body" id="body-3">
-        <div class="section-desc">When greeted: <span style="color:var(--plasma-cyan)">① Stop</span> · <span style="color:var(--plasma-cyan)">② Eye contact 3s</span> · <span style="color:var(--plasma-cyan)">③ Respond clearly</span></div>
-        <div class="task-item" id="chk-gc1" onclick="toggleCheck('gc1')"><div class="task-check"></div><span class="task-label">Stopped moving ✋</span></div>
-        <div class="task-item" id="chk-gc2" onclick="toggleCheck('gc2')"><div class="task-check"></div><span class="task-label">3 seconds eye contact 👀</span></div>
-        <div class="task-item" id="chk-gc3" onclick="toggleCheck('gc3')"><div class="task-check"></div><span class="task-label">Responded clearly 🗣️</span></div>
+        <div class="section-desc" id="sec3-desc"></div>
+        <div id="sec3-checks"></div>
         <div class="sp-toggle-row">
-          <div class="sp-toggle-q">Greeting Radar success today?</div>
+          <div class="sp-toggle-q" id="sec3-question"></div>
           <div class="sp-toggle-btns">
             <button class="sp-btn yes" id="sp3-yes" onclick="scoreToggle(3,true)">✓ YES +1SP</button>
             <button class="sp-btn no" id="sp3-no" onclick="scoreToggle(3,false)">✗ NO</button>
@@ -997,6 +995,7 @@ function render() {
   renderTodayTasks(dow, dayObj);
   renderWeeklyTasks(weekObj);
   renderLogisticsTasks(dow, dayObj);
+  renderSection3(dow, dayObj);
 
   // SP toggles
   for (let i = 1; i <= 5; i++) {
@@ -1104,6 +1103,55 @@ function renderLogisticsTasks(dow, dayObj) {
       <span class="task-label">${t.label}</span>
     </div>`;
   }).join('');
+}
+
+function renderSection3(dow, dayObj) {
+  const isWeekend = dow === 0 || dow === 6;
+
+  if (isWeekend) {
+    // Mission: Stay Present
+    document.getElementById('sec3-icon').textContent = '🎧';
+    document.getElementById('sec3-title').textContent = 'MISSION: STAY PRESENT';
+    document.getElementById('sec3-desc').innerHTML =
+      `During family TV or podcast time, Harrison must:<br>
+      <span style="color:var(--plasma-cyan)">① Body calm</span> — no excessive movement or fidgeting &nbsp;
+      <span style="color:var(--plasma-cyan)">② Engaged</span> — react, comment, or ask questions &nbsp;
+      <span style="color:var(--plasma-cyan)">③ No interrupting</span> — lets others listen too`;
+    document.getElementById('sec3-question').textContent = 'Stay Present mission accomplished?';
+
+    const checks = [
+      {id:'sp1-body', label:'Body stayed calm — not fidgeting or moving around 🧘'},
+      {id:'sp1-engaged', label:'Actually engaged — reacted, commented or asked questions 💬'},
+      {id:'sp1-noint', label:'No interrupting — let others listen too 🤫'},
+    ];
+    document.getElementById('sec3-checks').innerHTML = checks.map(c => {
+      const checked = dayObj.tasks[c.id] ? 'checked' : '';
+      return `<div class="task-item ${checked}" onclick="toggleDayTask('${c.id}')">
+        <div class="task-check">${checked ? '✓' : ''}</div>
+        <span class="task-label">${c.label}</span>
+      </div>`;
+    }).join('');
+  } else {
+    // Greeting Radar (weekdays)
+    document.getElementById('sec3-icon').textContent = '👁️';
+    document.getElementById('sec3-title').textContent = 'GREETING RADAR';
+    document.getElementById('sec3-desc').innerHTML =
+      `When greeted: <span style="color:var(--plasma-cyan)">① Stop moving</span> · <span style="color:var(--plasma-cyan)">② Eye contact 3s</span> · <span style="color:var(--plasma-cyan)">③ Respond clearly</span>`;
+    document.getElementById('sec3-question').textContent = 'Greeting Radar success today?';
+
+    const checks = [
+      {id:'gc1', label:'Stopped moving ✋'},
+      {id:'gc2', label:'3 seconds eye contact 👀'},
+      {id:'gc3', label:'Responded clearly 🗣️'},
+    ];
+    document.getElementById('sec3-checks').innerHTML = checks.map(c => {
+      const checked = dayObj.tasks[c.id] ? 'checked' : '';
+      return `<div class="task-item ${checked}" onclick="toggleDayTask('${c.id}')">
+        <div class="task-check">${checked ? '✓' : ''}</div>
+        <span class="task-label">${c.label}</span>
+      </div>`;
+    }).join('');
+  }
 }
 
 function renderRewards() {
