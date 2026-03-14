@@ -799,7 +799,7 @@ function handleRequest(e) {
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
-let sheetUrl = localStorage.getItem('harrisonSheetUrl') || '';
+let sheetUrl = localStorage.getItem('harrisonSheetUrl') || 'https://script.google.com/macros/s/AKfycbzOJifptAawVKnRTkEPOvNYyG1TOXmqxVl2WvgwJRrf2s4CfgeB_3DO3PK0blin9UjqZQ/exec';
 let state = {};
 let viewingDate = null; // null = today
 
@@ -980,8 +980,11 @@ function copyScript() {
 
 function connectSheet() {
   const url = document.getElementById('sheetUrlInput').value.trim();
-  if (!url || !url.includes('script.google.com')) {
-    showToast('Please paste a valid Apps Script URL', 'red'); return;
+  if (!url) {
+    alert('Please paste your Apps Script URL first.'); return;
+  }
+  if (!url.includes('script.google.com')) {
+    alert('That doesn\'t look like a Google Apps Script URL.\nIt should start with: https://script.google.com/macros/s/...'); return;
   }
   sheetUrl = url;
   localStorage.setItem('harrisonSheetUrl', url);
