@@ -398,14 +398,42 @@ body {
       </div>
       <div class="section-body" id="body-1">
         <div class="section-desc">
-          Use the Focus Command at least <strong style="color:var(--plasma-cyan)">3× today</strong> without being reminded.<br>
+          Use the Focus Command at least <strong style="color:var(--plasma-cyan)">3× today</strong> — self-initiated counts double!<br>
           <span style="color:var(--solar-gold)">This week's command:</span> <strong id="commandDisplay" style="color:var(--star-white)">Check My Body</strong>
         </div>
         <div class="command-input-wrap">
           <input class="command-input" id="commandInput" type="text" placeholder="This week's command..." oninput="updateWeeklyCommand(this.value)">
         </div>
+
+        <!-- Tap counter -->
+        <div style="padding:12px 14px;border-top:1px solid rgba(255,255,255,0.05);">
+          <div style="font-size:10px;color:var(--dim-star);letter-spacing:2px;margin-bottom:10px;">TAP EACH TIME HE USES THE COMMAND TODAY</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button onclick="changeCommandCount(-1)" style="width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.15);background:transparent;color:var(--dim-star);font-size:18px;cursor:pointer;flex-shrink:0;">−</button>
+            <div style="flex:1;text-align:center;">
+              <div style="font-family:'Orbitron',monospace;font-size:36px;font-weight:900;color:var(--plasma-cyan);line-height:1;" id="commandCount">0</div>
+              <div style="font-size:10px;color:var(--dim-star);margin-top:2px;">/ 3 needed</div>
+            </div>
+            <button onclick="changeCommandCount(1)" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--plasma-cyan);background:rgba(0,212,255,0.1);color:var(--plasma-cyan);font-size:18px;cursor:pointer;flex-shrink:0;">+</button>
+          </div>
+          <!-- Self vs prompted toggle -->
+          <div style="display:flex;gap:6px;margin-top:10px;">
+            <button id="cmd-self-btn" onclick="logCommandType('self')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid rgba(0,255,157,0.3);background:transparent;color:rgba(0,255,157,0.5);font-size:10px;cursor:pointer;font-family:'Exo 2',sans-serif;transition:all 0.2s;">+ Self-initiated ⭐</button>
+            <button id="cmd-cue-btn" onclick="logCommandType('cue')" style="flex:1;padding:7px;border-radius:8px;border:1.5px solid rgba(255,208,96,0.3);background:transparent;color:rgba(255,208,96,0.5);font-size:10px;cursor:pointer;font-family:'Exo 2',sans-serif;transition:all 0.2s;">+ After cue word</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:10px;color:var(--dim-star);">
+            <span>Self: <span id="cmd-self-count" style="color:var(--mission-green);font-weight:700;">0</span></span>
+            <span>After cue: <span id="cmd-cue-count" style="color:var(--solar-gold);font-weight:700;">0</span></span>
+          </div>
+          <!-- Weekly streak dots -->
+          <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:10px;color:var(--dim-star);letter-spacing:2px;margin-bottom:6px;display:flex;justify-content:space-between;"><span>THIS WEEK</span><span id="cmd-week-total" style="color:var(--plasma-cyan);">0 total uses</span></div>
+            <div id="cmd-week-dots" style="display:flex;gap:4px;"></div>
+          </div>
+        </div>
+
         <div class="sp-toggle-row">
-          <div class="sp-toggle-q">Used command 3× without reminders?</div>
+          <div class="sp-toggle-q">Used command 3× today?</div>
           <div class="sp-toggle-btns">
             <button class="sp-btn yes" id="sp1-yes" onclick="scoreToggle(1,true)">✓ YES +1SP</button>
             <button class="sp-btn no" id="sp1-no" onclick="scoreToggle(1,false)">✗ NO</button>
@@ -536,6 +564,39 @@ body {
         <button class="bonus-btn no" id="bonus-no" onclick="scoreBonus(false)">NOT TODAY</button>
       </div>
     </div>
+
+    <!-- Piano Competition Bonus -->
+    <div class="bonus-section" style="border-color:rgba(255,208,96,0.35);background:rgba(255,208,96,0.05);">
+      <div class="bonus-header">
+        <span style="font-size:20px">🎹</span>
+        <span class="bonus-title" style="color:var(--solar-gold);">COMPETITION BONUS</span>
+        <span class="bonus-sp" id="pianoBonusSPLabel" style="color:var(--solar-gold);">+1</span>
+      </div>
+      <div class="bonus-desc" style="margin-bottom:4px;">
+        <strong style="color:var(--star-white)">Haydn XVI/37:</strong> Clear sound, strong fingering — no rushing the runs.<br>
+        <strong style="color:var(--star-white)">Chopin Op.69 No.1:</strong> Singing tone — let each phrase breathe.
+      </div>
+
+      <!-- Tonight: set tomorrow's goal -->
+      <div style="background:rgba(255,208,96,0.07);border:1px solid rgba(255,208,96,0.2);border-radius:10px;padding:10px 12px;margin-bottom:10px;">
+        <div style="font-size:10px;color:var(--solar-gold);letter-spacing:2px;margin-bottom:6px;">🌙 SET TOMORROW'S GOAL (do this tonight together)</div>
+        <input id="pianoGoalInput" type="text" placeholder="e.g. Haydn bars 1–16 hands together, slow tempo…"
+          style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,208,96,0.25);border-radius:8px;padding:8px 10px;color:var(--star-white);font-size:12px;outline:none;font-family:'Exo 2',sans-serif;"
+          oninput="savePianoGoal(this.value)">
+      </div>
+
+      <!-- Today: did he meet yesterday's goal? -->
+      <div style="font-size:11px;color:var(--dim-star);margin-bottom:6px;">
+        📋 <strong style="color:var(--star-white)">Today's goal was:</strong> <span id="pianoGoalDisplay" style="color:var(--solar-gold);font-style:italic;">No goal set yet</span>
+      </div>
+      <div class="bonus-btns">
+        <button class="bonus-btn yes" id="piano-bonus-yes" onclick="scorePianoBonus(true)" style="border-color:rgba(255,208,96,0.4);color:rgba(255,208,96,0.6);">🎹 GOAL MET +1SP</button>
+        <button class="bonus-btn no" id="piano-bonus-no" onclick="scorePianoBonus(false)">NOT TODAY</button>
+      </div>
+      <div class="miss-note-row" id="piano-miss-note" style="margin-top:8px;">
+        <input class="miss-note-input" id="piano-miss-input" type="text" placeholder="What got in the way? (optional)" oninput="savePianoMissNote(this.value)" style="border-color:rgba(255,208,96,0.3);">
+      </div>
+    </div>
   </div><!-- end today page -->
 
   <!-- REWARDS PAGE -->
@@ -550,6 +611,10 @@ body {
     <div id="rewards-rare"></div>
     <div style="text-align:center"><span class="tier-label epic">🟣 EPIC REWARDS</span></div>
     <div id="rewards-epic"></div>
+
+    <!-- Redemption History -->
+    <div style="text-align:center"><span class="tier-label" style="background:rgba(255,255,255,0.05);color:var(--dim-star);border:1px solid rgba(255,255,255,0.1);margin-top:20px;">📜 REDEMPTION LOG</span></div>
+    <div id="redemption-log" style="margin-top:8px;"></div>
   </div>
 
   <!-- HISTORY PAGE -->
@@ -687,6 +752,7 @@ const REWARDS = [
   {id:'r6',tier:'rare',icon:'🍰',name:'Dessert Upgrade',cost:20,desc:'A special treat of choice'},
   {id:'r7',tier:'rare',icon:'🎮',name:'Parent Competition',cost:20,desc:'1-2 hr board game or sports match vs Mom or Dad'},
   {id:'r8',tier:'rare',icon:'🕹️',name:'Tech Unlock',cost:30,desc:'30 min uninterrupted gaming or video time'},
+  {id:'r11',tier:'rare',icon:'👫',name:'Playdate',cost:30,desc:'Arrange a playdate with a friend of choice'},
   {id:'r9',tier:'epic',icon:'🌍',name:'Master Strategist Outing',cost:80,desc:'A big outing of choice'},
   {id:'r10',tier:'epic',icon:'🎁',name:'Gift Shop',cost:80,desc:'Gift under $25 or $15 credit'},
 ];
@@ -996,6 +1062,8 @@ function render() {
   renderWeeklyTasks(weekObj);
   renderLogisticsTasks(dow, dayObj);
   renderSection3(dow, dayObj);
+  renderPianoBonus(dayObj, ad);
+  renderCommandCounter(dayObj);
 
   // SP toggles
   for (let i = 1; i <= 5; i++) {
@@ -1167,6 +1235,26 @@ function renderRewards() {
       </div>`;
     }).join('');
   });
+
+  // Redemption log
+  const reds = state.redemptions || [];
+  const logEl = document.getElementById('redemption-log');
+  if (reds.length === 0) {
+    logEl.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:var(--dim-star);">No rewards redeemed yet. Start earning! 🚀</div>';
+  } else {
+    logEl.innerHTML = [...reds].reverse().map((r,i) => {
+      const reward = REWARDS.find(x => x.id === r.id) || {};
+      const used = r.used;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);margin-bottom:7px;opacity:${used?0.55:1};">
+        <span style="font-size:18px;">${reward.icon||'🎁'}</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;color:${used?'var(--dim-star)':'var(--star-white)'};font-weight:600;${used?'text-decoration:line-through;':''}">${r.name}</div>
+          <div style="font-size:10px;color:var(--dim-star);margin-top:2px;">${r.date} · ${r.cost} SP</div>
+        </div>
+        <button onclick="toggleRedemptionUsed(${reds.length-1-i})" style="padding:5px 10px;border-radius:8px;border:1px solid ${used?'rgba(0,255,157,0.3)':'rgba(255,255,255,0.15)'};background:${used?'rgba(0,255,157,0.08)':'transparent'};color:${used?'var(--mission-green)':'var(--dim-star)'};font-size:10px;cursor:pointer;white-space:nowrap;">${used?'✓ Used':'Mark used'}</button>
+      </div>`;
+    }).join('');
+  }
 }
 
 function renderHistory() {
@@ -1194,7 +1282,8 @@ function renderHistory() {
       const pips = [1,2,3,4,5].map(i => {
         const v = sc[i];
         return `<div class="pip ${v===true?'filled':v===false?'missed':''}"></div>`;
-      }).join('') + `<div class="pip ${sc['bonus']===true?'bonus':''}"></div>`;
+      }).join('') + `<div class="pip ${sc['bonus']===true?'bonus':''}"></div>`
+        + `<div class="pip" style="${sc['piano']===true?'background:var(--solar-gold);border-color:var(--solar-gold);box-shadow:0 0 4px rgba(255,208,96,0.5);':sc['piano']===false?'background:rgba(255,68,102,0.25);border-color:rgba(255,68,102,0.5);':''}"></div>`;
       const isToday = dk === todayStr();
       return `<div class="history-day-row" onclick="jumpToDate('${dk}')">
         <div class="history-day-name">${DAYS[dd.getDay()]}</div>
@@ -1240,7 +1329,12 @@ function toggleDayTask(taskId) {
   renderLogisticsTasks(new Date(activeDate()+'T12:00:00').getDay(), dayObj);
 }
 
-function toggleWeeklyTask(taskId) {
+function toggleRedemptionUsed(idx) {
+  if (!state.redemptions[idx]) return;
+  state.redemptions[idx].used = !state.redemptions[idx].used;
+  scheduleSave();
+  renderRewards();
+}
   const ws = weekStartFor(activeDate());
   const weekObj = getWeek(ws);
   weekObj.weeklyTasks[taskId] = !weekObj.weeklyTasks[taskId];
@@ -1299,6 +1393,136 @@ function saveBonusNote(val) {
   const dayObj = getDay(activeDate());
   dayObj.bonusNote = val;
   scheduleSave();
+}
+
+// ── Piano Competition Bonus ──
+function scorePianoBonus(val) {
+  const dayObj = getDay(activeDate());
+  const prev = dayObj.scores['piano'];
+  if (prev === val) {
+    if (val === true) state.totalBank = Math.max(0, (state.totalBank||0) - 1);
+    delete dayObj.scores['piano'];
+  } else {
+    if (prev === true) state.totalBank = Math.max(0, (state.totalBank||0) - 1);
+    else if (val === true) {
+      state.totalBank = (state.totalBank||0) + 1;
+      showToast('🎹 PIANO GOAL MET! +1SP', 'gold');
+    }
+    dayObj.scores['piano'] = val;
+  }
+  // Show/hide miss note
+  const missRow = document.getElementById('piano-miss-note');
+  missRow.classList.toggle('show', val === false && dayObj.scores['piano'] === false);
+  scheduleSave();
+  render();
+}
+
+function savePianoGoal(val) {
+  // Save as tomorrow's goal — store on TODAY's dayObj as 'tomorrowGoal'
+  const dayObj = getDay(activeDate());
+  dayObj.pianoGoalForTomorrow = val;
+  scheduleSave();
+}
+
+function savePianoMissNote(val) {
+  const dayObj = getDay(activeDate());
+  dayObj.pianoMissNote = val;
+  scheduleSave();
+}
+
+function renderPianoBonus(dayObj, ad) {
+  // "Today's goal" = yesterday's tomorrowGoal
+  const yesterday = new Date(ad + 'T12:00:00');
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yKey = fmtDate(yesterday);
+  const yObj = state.days && state.days[yKey];
+  const todayGoal = yObj && yObj.pianoGoalForTomorrow ? yObj.pianoGoalForTomorrow : null;
+
+  document.getElementById('pianoGoalDisplay').textContent = todayGoal || 'No goal set yet';
+  document.getElementById('pianoGoalDisplay').style.color = todayGoal ? 'var(--solar-gold)' : 'var(--dim-star)';
+
+  // Tonight's goal input = today's tomorrowGoal
+  document.getElementById('pianoGoalInput').value = dayObj.pianoGoalForTomorrow || '';
+
+  const pval = dayObj.scores['piano'];
+  document.getElementById('piano-bonus-yes').classList.toggle('active', pval === true);
+  document.getElementById('piano-bonus-no').classList.toggle('active', pval === false);
+  if (pval === true) {
+    document.getElementById('piano-bonus-yes').style.borderColor = 'var(--solar-gold)';
+    document.getElementById('piano-bonus-yes').style.color = 'var(--solar-gold)';
+    document.getElementById('piano-bonus-yes').style.background = 'rgba(255,208,96,0.15)';
+  } else {
+    document.getElementById('piano-bonus-yes').style.borderColor = 'rgba(255,208,96,0.4)';
+    document.getElementById('piano-bonus-yes').style.color = 'rgba(255,208,96,0.6)';
+    document.getElementById('piano-bonus-yes').style.background = 'transparent';
+  }
+  document.getElementById('piano-miss-note').classList.toggle('show', pval === false);
+  if (dayObj.pianoMissNote) document.getElementById('piano-miss-input').value = dayObj.pianoMissNote || '';
+}
+
+// ── Weekly Command Counter ──
+function changeCommandCount(delta) {
+  const dayObj = getDay(activeDate());
+  if (!dayObj.commandData) dayObj.commandData = {count:0, self:0, cue:0};
+  dayObj.commandData.count = Math.max(0, (dayObj.commandData.count||0) + delta);
+  scheduleSave();
+  renderCommandCounter(dayObj);
+}
+
+function logCommandType(type) {
+  const dayObj = getDay(activeDate());
+  if (!dayObj.commandData) dayObj.commandData = {count:0, self:0, cue:0};
+  if (type === 'self') dayObj.commandData.self = (dayObj.commandData.self||0) + 1;
+  else dayObj.commandData.cue = (dayObj.commandData.cue||0) + 1;
+  dayObj.commandData.count = (dayObj.commandData.count||0) + 1;
+  scheduleSave();
+  renderCommandCounter(dayObj);
+  // Flash the button
+  const btn = document.getElementById(type === 'self' ? 'cmd-self-btn' : 'cmd-cue-btn');
+  btn.style.background = type === 'self' ? 'rgba(0,255,157,0.2)' : 'rgba(255,208,96,0.2)';
+  setTimeout(() => btn.style.background = 'transparent', 300);
+}
+
+function renderCommandCounter(dayObj) {
+  const cd = dayObj.commandData || {count:0,self:0,cue:0};
+  const count = cd.count || 0;
+  const el = document.getElementById('commandCount');
+  el.textContent = count;
+  el.style.color = count >= 3 ? 'var(--mission-green)' : count >= 2 ? 'var(--solar-gold)' : 'var(--plasma-cyan)';
+  document.getElementById('cmd-self-count').textContent = cd.self || 0;
+  document.getElementById('cmd-cue-count').textContent = cd.cue || 0;
+  renderCommandWeekDots();
+}
+
+function renderCommandWeekDots() {
+  const ad = activeDate();
+  const ws = weekStartFor(ad);
+  const mon = new Date(ws + 'T12:00:00');
+  let weekTotal = 0;
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const dt = new Date(mon); dt.setDate(mon.getDate() + i);
+    const key = fmtDate(dt);
+    const dd = state.days && state.days[key];
+    const count = dd && dd.commandData ? (dd.commandData.count||0) : 0;
+    weekTotal += count;
+    const isFuture = key > todayStr();
+    const isViewingDay = key === ad;
+    let dotColor = 'rgba(255,255,255,0.08)';
+    let border = '1px solid rgba(255,255,255,0.1)';
+    let label = count > 0 ? count : DAYS[dt.getDay()][0];
+    if (!isFuture && count >= 3) { dotColor = 'rgba(0,255,157,0.2)'; border = '1.5px solid var(--mission-green)'; }
+    else if (!isFuture && count > 0) { dotColor = 'rgba(255,208,96,0.15)'; border = '1.5px solid var(--solar-gold)'; }
+    if (isViewingDay) border = '2px solid var(--plasma-cyan)';
+    html += `<div style="flex:1;text-align:center;">
+      <div style="width:26px;height:26px;border-radius:50%;background:${dotColor};border:${border};display:flex;align-items:center;justify-content:center;margin:0 auto 3px;font-family:'Orbitron',monospace;font-size:9px;font-weight:700;color:${count>=3?'var(--mission-green)':count>0?'var(--solar-gold)':'var(--dim-star)'};">${label}</div>
+      <div style="font-size:9px;color:var(--dim-star);">${DAYS[dt.getDay()]}</div>
+    </div>`;
+  }
+  const el = document.getElementById('cmd-week-dots');
+  if (el) { el.style.display='flex'; el.style.gap='4px'; el.innerHTML = html; }
+  const wtEl = document.getElementById('cmd-week-total');
+  if (wtEl) wtEl.textContent = `${weekTotal} total uses`;
 }
 
 function updateWeeklyCommand(val) {
