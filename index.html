@@ -1338,6 +1338,8 @@ function toggleRedemptionUsed(idx) {
   scheduleSave();
   renderRewards();
 }
+
+function toggleWeeklyTask(taskId) {
   const ws = weekStartFor(activeDate());
   const weekObj = getWeek(ws);
   weekObj.weeklyTasks[taskId] = !weekObj.weeklyTasks[taskId];
