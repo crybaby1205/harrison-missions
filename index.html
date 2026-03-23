@@ -772,7 +772,7 @@ function handleRequest(e) {
   var output;
   if (action === "save") {
     var key = p.key;
-    var value = p.value;
+    var value = decodeURIComponent(p.value);
     var found = false;
     var data = sheet.getDataRange().getValues();
     for (var i = 0; i < data.length; i++) {
@@ -906,39 +906,117 @@ function setSyncStatus(s, msg) {
 }
 
 async function pushToSheet(key, value) {
-  if (!sheetUrl) return;
+  if (!sheetUrl) return false;
   try {
-    const url = `${sheetUrl}?action=save&key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`;
-    await fetch(url, {method:'GET', mode:'no-cors'});
-  } catch(e) {}
+    // Use a readable fetch (not no-cors) by going through the GET endpoint with params
+    const url = `${sheetUrl}?action=save&key=${encodeURIComponent(key)}&value=${encodeURIComponent(encodeURIComponent(value))}`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    return json.status === 'ok';
+  } catch(e) {
+    return false;
+  }
 }
 
 async function fullSync() {
   if (!sheetUrl) { setSyncStatus('idle','No sheet connected'); return; }
   setSyncStatus('syncing','Syncing…');
   try {
+    // Step 1: Load remote state
     const url = `${sheetUrl}?action=load`;
     const resp = await fetch(url);
     const json = await resp.json();
-    if (json.status === 'ok') {
-      // Merge remote data
-      Object.entries(json.data).forEach(([key, val]) => {
-        if (key === 'state') {
-          try {
-            const remote = JSON.parse(val);
-            // Merge: remote days + local days, take higher totalBank
-            if (remote.days) Object.assign(state.days, remote.days, state.days); // local wins per-day
-            if (remote.weeks) Object.assign(state.weeks, remote.weeks, state.weeks);
-            if ((remote.totalBank || 0) > (state.totalBank || 0)) state.totalBank = remote.totalBank;
-            if (remote.weeklyCommand && !state.weeklyCommand) state.weeklyCommand = remote.weeklyCommand;
-            if (remote.redemptions) state.redemptions = remote.redemptions;
-          } catch(e) {}
+
+    if (json.status === 'ok' && json.data && json.data.state) {
+      try {
+        const remote = JSON.parse(json.data.state);
+        // Step 2: Merge — always keep the richer/newer values
+        // Days: union of all days, local wins per-day (local is most recent edit)
+        if (remote.days) {
+          Object.keys(remote.days).forEach(dk => {
+            if (!state.days[dk]) {
+              // Remote has a day local doesn't — take it
+              state.days[dk] = remote.days[dk];
+            }
+            // If local already has the day, local wins (most recent edit)
+          });
         }
-      });
-      // Push local state up
-      await pushToSheet('state', JSON.stringify(state));
-      saveLocal();
+        // Weeks: same union approach
+        if (remote.weeks) {
+          Object.keys(remote.weeks).forEach(wk => {
+            if (!state.weeks[wk]) state.weeks[wk] = remote.weeks[wk];
+          });
+        }
+        // totalBank: take the LOWER of the two (safer — prevents phantom SP from stale remote)
+        // But only if remote has redemptions too (means it's not stale)
+        const remoteRedemptions = remote.redemptions || [];
+        const localRedemptions = state.redemptions || [];
+        if (remoteRedemptions.length >= localRedemptions.length) {
+          // Remote is at least as up-to-date on redemptions — trust its bank
+          // Take the value that matches more redemptions
+          state.redemptions = remoteRedemptions.length > localRedemptions.length
+            ? remoteRedemptions : localRedemptions;
+        }
+        // totalBank: recompute from scratch to avoid drift
+        state.totalBank = computeTotalBank();
+        if (!state.weeklyCommand) state.weeklyCommand = remote.weeklyCommand || 'Check My Body';
+      } catch(e) {}
+    }
+
+    // Step 3: Push merged local state back up
+    const saved = await pushToSheet('state', JSON.stringify(state));
+    saveLocal();
+
+    if (saved) {
       setSyncStatus('ok', 'Synced · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+    } else {
+      setSyncStatus('err', 'Saved locally, sheet sync failed');
+    }
+    render();
+  } catch(e) {
+    // Network error — still save locally
+    saveLocal();
+    setSyncStatus('err', 'Offline — saved locally');
+  }
+}
+
+// Recompute totalBank from all scored days minus all redemptions
+// This is the source of truth — prevents drift
+function computeTotalBank() {
+  let earned = 0;
+  Object.values(state.days || {}).forEach(d => {
+    earned += Object.values(d.scores || {}).filter(v => v === true).length;
+  });
+  let spent = 0;
+  (state.redemptions || []).forEach(r => { spent += (r.cost || 0); });
+  return Math.max(0, earned - spent);
+}
+
+// Pull from sheet — only called on first load to restore data on a new device
+async function pullFromSheet() {
+  if (!sheetUrl) return;
+  setSyncStatus('syncing', 'Loading…');
+  try {
+    const url = `${sheetUrl}?action=load`;
+    const resp = await fetch(url);
+    const json = await resp.json();
+    if (json.status === 'ok' && json.data && json.data.state) {
+      try {
+        const remote = JSON.parse(json.data.state);
+        const localIsEmpty = Object.keys(state.days || {}).length === 0
+          && (state.totalBank || 0) === 0
+          && (state.redemptions || []).length === 0;
+        if (localIsEmpty && remote) {
+          state = remote;
+          if (!state.days) state.days = {};
+          if (!state.weeks) state.weeks = {};
+          if (!state.redemptions) state.redemptions = [];
+          if (!state.weeklyCommand) state.weeklyCommand = 'Check My Body';
+          state.totalBank = computeTotalBank();
+          saveLocal();
+        }
+      } catch(e) {}
+      setSyncStatus('ok', 'Loaded · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
       render();
     } else {
       setSyncStatus('err');
@@ -949,15 +1027,21 @@ async function fullSync() {
 }
 
 function scheduleSave() {
+  // Always recompute bank before saving to prevent drift
+  state.totalBank = computeTotalBank();
   saveLocal();
   if (syncTimeout) clearTimeout(syncTimeout);
   syncTimeout = setTimeout(async () => {
     if (!sheetUrl) return;
     setSyncStatus('syncing','Saving…');
     try {
-      await pushToSheet('state', JSON.stringify(state));
-      setSyncStatus('ok', 'Saved · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
-    } catch(e) { setSyncStatus('err'); }
+      const saved = await pushToSheet('state', JSON.stringify(state));
+      if (saved) {
+        setSyncStatus('ok', 'Saved · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+      } else {
+        setSyncStatus('err', 'Saved locally, sheet unreachable');
+      }
+    } catch(e) { setSyncStatus('err', 'Saved locally, sheet unreachable'); }
   }, 1500);
 }
 
