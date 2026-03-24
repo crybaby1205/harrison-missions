@@ -318,22 +318,18 @@ body {
 <div id="setupScreen">
   <div class="setup-box">
     <div class="setup-title">🚀 MISSION CONTROL SETUP</div>
-    <div class="setup-sub">Connect to Google Sheets so Harrison's scores sync between your Mac and his iPad. This takes about 5 minutes.</div>
+    <div class="setup-sub">Create a free JSONBin account to sync Harrison's scores between your Mac and his iPad. Takes 2 minutes.</div>
     <div class="setup-steps">
-      <div class="setup-step"><span class="step-num">1</span><span class="step-text">Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> and create a new blank spreadsheet. Name it <strong style="color:var(--star-white)">Harrison Mission Control</strong>.</span></div>
-      <div class="setup-step"><span class="step-num">2</span><span class="step-text">Click <strong style="color:var(--star-white)">Extensions → Apps Script</strong>. Delete all existing code, paste in the script below, and click <strong style="color:var(--star-white)">Save</strong> (floppy disk icon).</span></div>
-      <div class="setup-step"><span class="step-num">3</span><span class="step-text">Click <strong style="color:var(--star-white)">Deploy → New Deployment</strong>. Set type to <strong style="color:var(--star-white)">Web App</strong>. Set "Who has access" to <strong style="color:var(--star-white)">Anyone</strong>. Click Deploy and copy the URL.</span></div>
-      <div class="setup-step"><span class="step-num">4</span><span class="step-text">Paste the URL below and click Connect.</span></div>
+      <div class="setup-step"><span class="step-num">1</span><span class="step-text">Go to <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> and click <strong style="color:var(--star-white)">Sign Up Free</strong>. Confirm your email.</span></div>
+      <div class="setup-step"><span class="step-num">2</span><span class="step-text">After logging in, click your profile icon → <strong style="color:var(--star-white)">API Keys</strong>. Copy your <strong style="color:var(--star-white)">Secret Key</strong> and paste it below.</span></div>
+      <div class="setup-step"><span class="step-num">3</span><span class="step-text">Click <strong style="color:var(--star-white)">Connect</strong> — the app will create a storage bin automatically and launch.</span></div>
     </div>
     <div class="setup-divider"></div>
-    <div class="setup-label">APPS SCRIPT CODE — copy all of this:</div>
-    <textarea id="scriptCode" readonly style="width:100%;height:120px;background:rgba(0,0,0,0.4);border:1px solid rgba(0,212,255,0.2);border-radius:8px;padding:10px;color:#aaccff;font-size:10px;font-family:monospace;resize:none;outline:none;"></textarea>
-    <button onclick="copyScript()" style="width:100%;margin-top:6px;padding:8px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.25);border-radius:8px;color:var(--plasma-cyan);font-size:11px;cursor:pointer;font-family:'Exo 2',sans-serif;">📋 Copy Script to Clipboard</button>
-    <div class="setup-divider"></div>
-    <div class="setup-label">PASTE YOUR WEB APP URL HERE:</div>
-    <input class="setup-input" id="sheetUrlInput" type="text" placeholder="https://script.google.com/macros/s/.../exec">
-    <button class="setup-btn" onclick="connectSheet()">⚡ CONNECT & LAUNCH</button>
+    <div class="setup-label">YOUR JSONBIN SECRET KEY:</div>
+    <input class="setup-input" id="apiKeyInput" type="text" placeholder="$2b$10$...">
+    <button class="setup-btn" onclick="connectJSONBin()" style="margin-top:12px;">⚡ CONNECT & LAUNCH</button>
     <button onclick="skipSetup()" style="width:100%;margin-top:10px;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--dim-star);font-size:11px;cursor:pointer;font-family:'Exo 2',sans-serif;">Use offline (no sync) →</button>
+    <div id="setupError" style="margin-top:10px;color:var(--alert-red);font-size:11px;text-align:center;display:none;"></div>
   </div>
 </div>
 
@@ -625,15 +621,17 @@ body {
   <!-- SETTINGS PAGE -->
   <div id="page-settings" class="page">
     <div class="settings-section">
-      <div class="settings-title">🔗 GOOGLE SHEETS SYNC</div>
+      <div class="settings-title">🔗 JSONBIN SYNC</div>
       <div class="settings-row">
-        <div class="settings-label">Web App URL</div>
+        <div class="settings-label" style="font-size:11px;">Bin ID</div>
+        <input class="settings-input" id="settingsBinId" type="text" placeholder="bin id..." style="font-size:11px;">
       </div>
       <div class="settings-row">
-        <input class="settings-input" id="settingsUrlInput" type="text" placeholder="https://script.google.com/...">
-        <button class="settings-btn" onclick="saveSheetUrl()">SAVE</button>
+        <div class="settings-label" style="font-size:11px;">API Key</div>
+        <input class="settings-input" id="settingsApiKey" type="text" placeholder="$2b$10$..." style="font-size:11px;">
+        <button class="settings-btn" onclick="saveJsonBinSettings()">SAVE</button>
       </div>
-      <div class="settings-row" style="margin-top:8px;">
+      <div class="settings-row" style="margin-top:4px;">
         <button class="settings-btn" style="width:100%" onclick="manualSync()">↻ SYNC NOW</button>
       </div>
     </div>
@@ -758,42 +756,12 @@ const REWARDS = [
 ];
 
 // The Google Apps Script to show in setup
-const APPS_SCRIPT = `function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Data") || ss.insertSheet("Data");
-  var data = sheet.getDataRange().getValues();
-  var result = {};
-  for (var i = 0; i < data.length; i++) {
-    if (data[i][0]) result[data[i][0]] = data[i][1];
-  }
-  return ContentService
-    .createTextOutput(JSON.stringify({status:"ok", data:result}))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName("Data") || ss.insertSheet("Data");
-  var body = JSON.parse(e.postData.contents);
-  var key = body.key;
-  var value = body.value;
-  var data = sheet.getDataRange().getValues();
-  var found = false;
-  for (var i = 0; i < data.length; i++) {
-    if (data[i][0] === key) {
-      sheet.getRange(i+1,2).setValue(value);
-      found = true; break;
-    }
-  }
-  if (!found) sheet.appendRow([key, value]);
-  return ContentService
-    .createTextOutput(JSON.stringify({status:"ok"}))
-    .setMimeType(ContentService.MimeType.JSON);
-}`;
-
 // ─────────────────────────────────────────────
 // STATE
 // ─────────────────────────────────────────────
-let sheetUrl = localStorage.getItem('harrisonSheetUrl') || 'https://script.google.com/macros/s/AKfycbzOJifptAawVKnRTkEPOvNYyG1TOXmqxVl2WvgwJRrf2s4CfgeB_3DO3PK0blin9UjqZQ/exec';
+const JSONBIN_BASE = 'https://api.jsonbin.io/v3/b';
+let binId = localStorage.getItem('harrisonBinId') || '';
+let apiKey = localStorage.getItem('harrisonApiKey') || '';
 let state = {};
 let viewingDate = null; // null = today
 
@@ -886,10 +854,10 @@ function loadLocal() {
 }
 
 // ─────────────────────────────────────────────
-// GOOGLE SHEETS SYNC
+// SYNC
 // ─────────────────────────────────────────────
 let syncTimeout = null;
-let syncStatus = 'idle'; // idle | syncing | ok | err
+let syncStatus = 'idle';
 
 function setSyncStatus(s, msg) {
   syncStatus = s;
@@ -899,54 +867,68 @@ function setSyncStatus(s, msg) {
   txt.textContent = msg || (s === 'ok' ? 'Synced' : s === 'err' ? 'Sync failed — tap to retry' : s === 'syncing' ? 'Syncing…' : 'Offline mode');
 }
 
-async function pushToSheet(key, value) {
-  if (!sheetUrl) return false;
+// ─────────────────────────────────────────────
+// JSONBIN SYNC
+// ─────────────────────────────────────────────
+function isConfigured() { return binId && apiKey; }
+
+async function loadFromBin() {
+  if (!isConfigured()) return null;
   try {
-    const resp = await fetch(sheetUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ key, value })
+    const resp = await fetch(`${JSONBIN_BASE}/${binId}/latest`, {
+      headers: { 'X-Master-Key': apiKey, 'X-Bin-Meta': 'false' }
     });
-    const json = await resp.json();
-    return json.status === 'ok';
-  } catch(e) {
-    return false;
-  }
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch(e) { return null; }
 }
 
-async function loadFromSheet() {
-  if (!sheetUrl) return null;
+async function saveToBin(data) {
+  if (!isConfigured()) return false;
   try {
-    const resp = await fetch(sheetUrl + '?t=' + Date.now());
+    const resp = await fetch(`${JSONBIN_BASE}/${binId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+      body: JSON.stringify(data)
+    });
+    return resp.ok;
+  } catch(e) { return false; }
+}
+
+async function createBin(data) {
+  try {
+    const resp = await fetch(JSONBIN_BASE, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': apiKey,
+        'X-Bin-Name': 'HarrisonMissionControl',
+        'X-Bin-Private': 'true'
+      },
+      body: JSON.stringify(data)
+    });
+    if (!resp.ok) return null;
     const json = await resp.json();
-    if (json.status === 'ok' && json.data && json.data.state) {
-      return JSON.parse(json.data.state);
-    }
-  } catch(e) {}
-  return null;
+    return json.metadata?.id || null;
+  } catch(e) { return null; }
 }
 
 function mergeRemote(remote) {
   if (!remote) return;
-  // Days: local wins if it has the day, remote fills in missing days
   if (remote.days) {
     Object.keys(remote.days).forEach(dk => {
       if (!state.days[dk]) state.days[dk] = remote.days[dk];
     });
   }
-  // Weeks: same
   if (remote.weeks) {
     Object.keys(remote.weeks).forEach(wk => {
       if (!state.weeks[wk]) state.weeks[wk] = remote.weeks[wk];
     });
   }
-  // Redemptions: keep whichever list is longer
   const remoteReds = remote.redemptions || [];
   const localReds = state.redemptions || [];
   if (remoteReds.length > localReds.length) state.redemptions = remoteReds;
-  // Weekly command
   if (!state.weeklyCommand && remote.weeklyCommand) state.weeklyCommand = remote.weeklyCommand;
-  // Always recompute bank — never trust a stored number
   state.totalBank = computeTotalBank();
 }
 
@@ -961,48 +943,38 @@ function computeTotalBank() {
 }
 
 async function fullSync() {
-  if (!sheetUrl) { setSyncStatus('idle', 'No sheet connected'); return; }
+  if (!isConfigured()) { setSyncStatus('idle', 'No sync configured'); return; }
   setSyncStatus('syncing', 'Syncing…');
-  try {
-    const remote = await loadFromSheet();
-    mergeRemote(remote);
-    saveLocal();
-    const saved = await pushToSheet('state', JSON.stringify(state));
-    setSyncStatus(saved ? 'ok' : 'err',
-      saved
-        ? 'Synced · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
-        : 'Saved locally — sheet unreachable');
-    render();
-  } catch(e) {
-    saveLocal();
-    setSyncStatus('err', 'Saved locally — sheet unreachable');
-    render();
-  }
+  const remote = await loadFromBin();
+  mergeRemote(remote);
+  saveLocal();
+  const saved = await saveToBin(state);
+  setSyncStatus(saved ? 'ok' : 'err',
+    saved
+      ? 'Synced · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
+      : 'Saved locally — sync failed');
+  render();
 }
 
-async function pullFromSheet() {
-  if (!sheetUrl) return;
+async function pullFromBin() {
+  if (!isConfigured()) return;
   setSyncStatus('syncing', 'Loading…');
-  try {
-    const remote = await loadFromSheet();
-    const localIsEmpty = Object.keys(state.days || {}).length === 0
-      && (state.redemptions || []).length === 0;
-    if (localIsEmpty && remote) {
-      state = remote;
-      if (!state.days) state.days = {};
-      if (!state.weeks) state.weeks = {};
-      if (!state.redemptions) state.redemptions = [];
-      if (!state.weeklyCommand) state.weeklyCommand = 'Check My Body';
-    } else {
-      mergeRemote(remote);
-    }
-    state.totalBank = computeTotalBank();
-    saveLocal();
-    setSyncStatus('ok', 'Loaded · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
-    render();
-  } catch(e) {
-    setSyncStatus('err', 'Could not reach sheet');
+  const remote = await loadFromBin();
+  const localIsEmpty = Object.keys(state.days || {}).length === 0
+    && (state.redemptions || []).length === 0;
+  if (localIsEmpty && remote && Object.keys(remote).length > 0) {
+    state = remote;
+    if (!state.days) state.days = {};
+    if (!state.weeks) state.weeks = {};
+    if (!state.redemptions) state.redemptions = [];
+    if (!state.weeklyCommand) state.weeklyCommand = 'Check My Body';
+  } else {
+    mergeRemote(remote);
   }
+  state.totalBank = computeTotalBank();
+  saveLocal();
+  setSyncStatus('ok', 'Loaded · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}));
+  render();
 }
 
 function scheduleSave() {
@@ -1010,48 +982,45 @@ function scheduleSave() {
   saveLocal();
   if (syncTimeout) clearTimeout(syncTimeout);
   syncTimeout = setTimeout(async () => {
-    if (!sheetUrl) return;
+    if (!isConfigured()) return;
     setSyncStatus('syncing', 'Saving…');
-    const saved = await pushToSheet('state', JSON.stringify(state));
+    const saved = await saveToBin(state);
     setSyncStatus(saved ? 'ok' : 'err',
       saved
         ? 'Saved · ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})
-        : 'Saved locally — sheet unreachable');
-  }, 1500);
+        : 'Saved locally — sync failed');
+  }, 2000);
 }
 
-function manualSync() {
-  fullSync();
-}
+function manualSync() { fullSync(); }
 
 // ─────────────────────────────────────────────
 // SETUP
 // ─────────────────────────────────────────────
-document.getElementById('scriptCode').value = APPS_SCRIPT;
-
-function copyScript() {
-  navigator.clipboard.writeText(APPS_SCRIPT).then(() => showToast('📋 Script copied!')).catch(() => {
-    document.getElementById('scriptCode').select();
-    document.execCommand('copy');
-    showToast('📋 Script copied!');
-  });
-}
-
-function connectSheet() {
-  const url = document.getElementById('sheetUrlInput').value.trim();
-  if (!url) {
-    alert('Please paste your Apps Script URL first.'); return;
+async function connectJSONBin() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const errEl = document.getElementById('setupError');
+  if (!key) { errEl.textContent = 'Please paste your API key.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+  document.querySelector('.setup-btn').textContent = 'Connecting…';
+  apiKey = key;
+  // Create a new bin with initial empty state
+  const newId = await createBin({ days:{}, weeks:{}, redemptions:[], totalBank:0, weeklyCommand:'Check My Body' });
+  if (!newId) {
+    document.querySelector('.setup-btn').textContent = '⚡ CONNECT & LAUNCH';
+    errEl.textContent = 'Could not connect — check your API key and try again.';
+    errEl.style.display = 'block';
+    return;
   }
-  if (!url.includes('script.google.com')) {
-    alert('That doesn\'t look like a Google Apps Script URL.\nIt should start with: https://script.google.com/macros/s/...'); return;
-  }
-  sheetUrl = url;
-  localStorage.setItem('harrisonSheetUrl', url);
+  binId = newId;
+  localStorage.setItem('harrisonApiKey', apiKey);
+  localStorage.setItem('harrisonBinId', binId);
   launchApp();
-  fullSync();
+  await pullFromBin();
 }
 
 function skipSetup() {
+  localStorage.setItem('harrisonSkipSetup','1');
   launchApp();
   setSyncStatus('idle','Offline mode — no sync');
 }
@@ -1060,6 +1029,15 @@ function launchApp() {
   document.getElementById('setupScreen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   render();
+}
+
+function saveJsonBinSettings() {
+  binId = document.getElementById('settingsBinId').value.trim();
+  apiKey = document.getElementById('settingsApiKey').value.trim();
+  localStorage.setItem('harrisonBinId', binId);
+  localStorage.setItem('harrisonApiKey', apiKey);
+  showToast('Settings saved');
+  fullSync();
 }
 
 // ─────────────────────────────────────────────
@@ -1161,7 +1139,8 @@ function render() {
   document.getElementById('commandInput').value = cmd;
 
   // Settings
-  document.getElementById('settingsUrlInput').value = sheetUrl || '';
+  document.getElementById('settingsBinId').value = binId || '';
+  document.getElementById('settingsApiKey').value = apiKey || '';
   document.getElementById('settingsCommandInput').value = cmd;
 
   renderRewards();
@@ -1626,14 +1605,6 @@ function showPage(page, tabEl) {
   if (page === 'history') renderHistory();
 }
 
-function saveSheetUrl() {
-  const url = document.getElementById('settingsUrlInput').value.trim();
-  sheetUrl = url;
-  localStorage.setItem('harrisonSheetUrl', url);
-  showToast('URL saved');
-  fullSync();
-}
-
 function exportData() {
   const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
@@ -1644,7 +1615,7 @@ function exportData() {
 
 function resetData() {
   if (confirm('This will delete ALL local data. Are you sure?')) {
-    localStorage.removeItem('harrisonState');
+    localStorage.clear();
     location.reload();
   }
 }
@@ -1679,21 +1650,14 @@ function createStars() {
 createStars();
 loadLocal();
 
-if (sheetUrl) {
-  // Already configured — skip setup
+if (binId && apiKey) {
   launchApp();
-  fullSync();
+  pullFromBin();
 } else if (localStorage.getItem('harrisonSkipSetup')) {
   launchApp();
-  setSyncStatus('idle','Offline mode');
+  setSyncStatus('idle', 'Offline mode');
 }
 
-// skipSetup also sets flag
-const _skipSetup = skipSetup;
-window.skipSetup = function() {
-  localStorage.setItem('harrisonSkipSetup','1');
-  _skipSetup();
-};
 </script>
 </body>
 </html>
